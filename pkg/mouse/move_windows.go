@@ -12,8 +12,12 @@ import (
 var (
 	// ErrDurationTooLong is returned when the movement duration exceeds the interval
 	ErrDurationTooLong = errors.New("movement duration exceeds interval")
+
 	// ErrUserInterruption is returned when user moves the cursor during execution
 	ErrUserInterruption = errors.New("movement interrupted by user cursor activity")
+
+	// ErrUserAlreadyMoving is returned when the user is already moving the cursor.
+	ErrUserAlreadyMoving = errors.New("user is already moving the cursor")
 )
 
 // Move moves the mouse cursor in a square pattern by the specified distance on Windows
@@ -66,7 +70,7 @@ func Move(distance int, interval time.Duration) error {
 
 	// If cursor moved, user is actively using it
 	if checkPoint.X != originalX || checkPoint.Y != originalY {
-		return nil // Do nothing if user is already moving the cursor
+		return ErrUserAlreadyMoving
 	}
 
 	// Store the expected position we're controlling
