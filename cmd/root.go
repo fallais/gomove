@@ -14,9 +14,7 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:   "gomove",
 	Short: "A simple mouse mover to prevent session lock",
-	Long: `GoMove is a CLI application that prevents your computer session from locking
-by periodically moving the mouse cursor slightly. It's designed to work on both
-Windows and Linux systems.`,
+	Long:  `GoMove is a CLI application that prevents your computer session from locking by periodically moving the mouse cursor slightly. It's designed to work on both Windows and Linux systems.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -32,6 +30,10 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.gomove/config.yaml)")
+
+	// Add subcommands
+	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(startCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.

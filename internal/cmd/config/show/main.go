@@ -1,4 +1,4 @@
-package cmd
+package show
 
 import (
 	"fmt"
@@ -9,22 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// statusCmd represents the status command
-var statusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Show current configuration status",
-	Long: `Display the current configuration values and the location of the config file.
-This helps you verify your settings before starting the mouse mover.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		showStatus()
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(statusCmd)
-}
-
-func showStatus() {
+func Run(cmd *cobra.Command, args []string) {
 	fmt.Println("GoMove Configuration Status")
 	fmt.Println("===========================")
 

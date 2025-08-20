@@ -16,8 +16,6 @@ var startCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(startCmd)
-
 	// Here you will define your flags and configuration settings.
 	startCmd.Flags().IntP("interval", "i", 60, "Interval in seconds between mouse movements")
 	startCmd.Flags().IntP("distance", "d", 1, "Distance in pixels to move the mouse")
