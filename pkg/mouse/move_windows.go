@@ -2,11 +2,9 @@ package mouse
 
 import (
 	"errors"
-	"fmt"
 	"time"
-	"unsafe"
 
-	"golang.org/x/sys/windows"
+	"github.com/go-vgo/robotgo"
 )
 
 var (
@@ -20,132 +18,61 @@ var (
 	ErrUserAlreadyMoving = errors.New("user is already moving the cursor")
 )
 
+const (
+	Steps     int           = 10
+	Delay     time.Duration = 50 * time.Millisecond
+	Tolerance int           = 5
+)
+
+type Mover struct {
+	distance int
+	interval time.Duration
+}
+
+func NewMover(distance int, interval time.Duration) *Mover {
+	return &Mover{
+		distance: distance,
+		interval: interval,
+	}
+}
+
+func (m *Mover) EstimatedDuration() time.Duration {
+	return time.Duration(4*Steps) * Delay
+}
+
 // Move moves the mouse cursor in a square pattern by the specified distance on Windows
-func Move(distance int, interval time.Duration) error {
-	user32 := windows.NewLazySystemDLL("user32.dll")
-	getCursorPos := user32.NewProc("GetCursorPos")
-	setCursorPos := user32.NewProc("SetCursorPos")
-
-	// Calculate estimated duration for the movement
-	// Each edge has 10 steps with 50ms delay = 500ms per edge, 4 edges = 2000ms total
-	estimatedDuration := time.Duration(4*10*50) * time.Millisecond
-	if estimatedDuration >= interval {
-		return ErrDurationTooLong
-	}
-
-	// Get current cursor position
-	var point struct {
-		X, Y int32
-	}
-
-	ret, _, err := getCursorPos.Call(uintptr(unsafe.Pointer(&point)))
-	if ret == 0 {
-		return fmt.Errorf("failed to get cursor position: %v", err)
-	}
-
+func (m *Mover) Move() error {
 	// Store original position for comparison
-	originalX, originalY := point.X, point.Y
-
-	// Helper function to check if user moved the cursor
-	checkUserMovement := func() error {
-		var currentPoint struct {
-			X, Y int32
-		}
-		ret, _, err := getCursorPos.Call(uintptr(unsafe.Pointer(&currentPoint)))
-		if ret == 0 {
-			return fmt.Errorf("failed to get cursor position: %v", err)
-		}
-		return nil
-	}
+	originalX, originalY := robotgo.Location()
 
 	// Check if user is already moving the cursor (compare position after small delay)
-	time.Sleep(10 * time.Millisecond)
-	var checkPoint struct {
-		X, Y int32
+	isMoving, err := userIsAlreadyMoving(originalX, originalY)
+	if err != nil {
+		return err
 	}
-	ret, _, err = getCursorPos.Call(uintptr(unsafe.Pointer(&checkPoint)))
-	if ret == 0 {
-		return fmt.Errorf("failed to get cursor position: %v", err)
-	}
-
-	// If cursor moved, user is actively using it
-	if checkPoint.X != originalX || checkPoint.Y != originalY {
+	if isMoving {
 		return ErrUserAlreadyMoving
 	}
 
-	// Store the expected position we're controlling
-	expectedX, expectedY := originalX, originalY
-
-	// Helper function for absolute value
-	abs := func(x int32) int32 {
-		if x < 0 {
-			return -x
-		}
-		return x
-	}
-
-	// Helper function to smoothly move from one point to another with interruption detection
-	smoothMove := func(startX, startY, endX, endY int32) error {
-		steps := int32(10) // Number of steps to take between points
-		deltaX := (endX - startX) / steps
-		deltaY := (endY - startY) / steps
-
-		for i := int32(0); i <= steps; i++ {
-			// Before moving, check if user has moved the cursor unexpectedly
-			if err := checkUserMovement(); err != nil {
-				return err
-			}
-
-			var currentPoint struct {
-				X, Y int32
-			}
-			ret, _, err := getCursorPos.Call(uintptr(unsafe.Pointer(&currentPoint)))
-			if ret == 0 {
-				return fmt.Errorf("failed to get cursor position: %v", err)
-			}
-
-			// If the cursor is not where we expect it to be, user has moved it
-			tolerance := int32(5) // Allow small tolerance for rounding errors
-			if abs(currentPoint.X-expectedX) > tolerance || abs(currentPoint.Y-expectedY) > tolerance {
-				return ErrUserInterruption
-			}
-
-			currentX := startX + deltaX*i
-			currentY := startY + deltaY*i
-
-			ret, _, err = setCursorPos.Call(uintptr(currentX), uintptr(currentY))
-			if ret == 0 {
-				return fmt.Errorf("failed to set cursor position: %v", err)
-			}
-
-			// Update expected position
-			expectedX, expectedY = currentX, currentY
-
-			time.Sleep(50 * time.Millisecond) // Small delay for smooth movement
-		}
-		return nil
-	}
-
 	// Draw square by tracing each edge: right, down, left, up
-	// Right edge
-	if err := smoothMove(originalX, originalY, originalX+int32(distance), originalY); err != nil {
-		return err
-	}
-
-	// Down edge
-	if err := smoothMove(originalX+int32(distance), originalY, originalX+int32(distance), originalY+int32(distance)); err != nil {
-		return err
-	}
-
-	// Left edge
-	if err := smoothMove(originalX+int32(distance), originalY+int32(distance), originalX, originalY+int32(distance)); err != nil {
-		return err
-	}
-
-	// Up edge (back to start)
-	if err := smoothMove(originalX, originalY+int32(distance), originalX, originalY); err != nil {
-		return err
-	}
+	robotgo.MouseSleep = 100                                           // Make it smooth
+	robotgo.Move(originalX+int(m.distance), originalY)                 // Right edge
+	robotgo.Move(originalX+int(m.distance), originalY+int(m.distance)) // Down edge
+	robotgo.Move(originalX, originalY+int(m.distance))                 // Left edge
+	robotgo.Move(originalX, originalY)                                 // Up edge (back to start)
 
 	return nil
+}
+
+func userIsAlreadyMoving(originalX, originalY int) (bool, error) {
+	time.Sleep(10 * time.Millisecond)
+
+	nowX, nowY := robotgo.Location()
+
+	// If cursor moved, user is actively using it
+	if nowX != originalX || nowY != originalY {
+		return true, nil
+	}
+
+	return false, nil
 }

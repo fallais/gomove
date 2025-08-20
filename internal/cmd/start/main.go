@@ -2,7 +2,6 @@ package start
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -39,26 +38,32 @@ func Run(cmd *cobra.Command, args []string) {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	defer ticker.Stop()
 
+	mover := mouse.NewMover(distance, time.Duration(interval)*time.Second)
+
+	// Check if the estimated duration exceeds the interval
+	if mover.EstimatedDuration() > time.Duration(interval)*time.Second {
+		log.Warn("estimated move duration exceeds interval, increase the interval", zap.Int("interval", interval))
+		return
+	}
+
 	// Main loop
 	for {
 		select {
 		case <-ticker.C:
-			err := mouse.Move(distance, time.Duration(interval)*time.Second)
+			err := mover.Move()
 			if err != nil {
-				if errors.Is(err, mouse.ErrDurationTooLong) {
-					log.Warn("movement duration exceeds interval", zap.Int("interval", interval))
-				} else if errors.Is(err, mouse.ErrUserInterruption) {
-					log.Debug("user interrupted movement", zap.Error(err))
+				if errors.Is(err, mouse.ErrUserInterruption) {
+					log.Info("user interrupted movement")
 				} else if errors.Is(err, mouse.ErrUserAlreadyMoving) {
-					log.Debug("user is already moving the cursor", zap.Error(err))
+					log.Info("user is already moving the cursor")
 				} else {
 					log.Error("Error moving mouse", zap.Error(err))
 				}
 			} else {
-				fmt.Printf("Mouse moved at %s\n", time.Now().Format("15:04:05"))
+				log.Info("mouse moved", zap.Time("at", time.Now()))
 			}
 		case <-signalChan:
-			fmt.Println("\nReceived interrupt signal. Stopping mouse mover...")
+			log.Info("Received interrupt signal. Stopping mouse mover...")
 			return
 		}
 	}
