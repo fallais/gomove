@@ -38,7 +38,11 @@ func Run(cmd *cobra.Command, args []string) {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	defer ticker.Stop()
 
-	mover := mouse.NewMover(distance, time.Duration(interval)*time.Second)
+	watcher := mouse.NewWatcher()
+	watcher.Start()
+	defer watcher.Stop()
+
+	mover := mouse.NewMover(watcher, time.Duration(interval)*time.Second)
 
 	// Check if the estimated duration exceeds the interval
 	if mover.EstimatedDuration() > time.Duration(interval)*time.Second {

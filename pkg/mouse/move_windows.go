@@ -2,6 +2,7 @@ package mouse
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/go-vgo/robotgo"
@@ -21,18 +22,19 @@ var (
 const (
 	Steps     int           = 10
 	Delay     time.Duration = 50 * time.Millisecond
+	Distance  int           = 10
 	Tolerance int           = 5
 )
 
 type Mover struct {
-	distance int
 	interval time.Duration
+	watcher  Watcher
 }
 
-func NewMover(distance int, interval time.Duration) *Mover {
+func NewMover(watcher Watcher, interval time.Duration) *Mover {
 	return &Mover{
-		distance: distance,
 		interval: interval,
+		watcher:  watcher,
 	}
 }
 
@@ -42,37 +44,21 @@ func (m *Mover) EstimatedDuration() time.Duration {
 
 // Move moves the mouse cursor in a square pattern by the specified distance on Windows
 func (m *Mover) Move() error {
-	// Store original position for comparison
-	originalX, originalY := robotgo.Location()
-
+	fmt.Println(m.watcher.IsUserMoving())
 	// Check if user is already moving the cursor (compare position after small delay)
-	isMoving, err := userIsAlreadyMoving(originalX, originalY)
-	if err != nil {
-		return err
-	}
-	if isMoving {
+	if m.watcher.IsUserMoving() {
 		return ErrUserAlreadyMoving
 	}
 
+	// Store original position for comparison
+	originalX, originalY := robotgo.Location()
+
 	// Draw square by tracing each edge: right, down, left, up
-	robotgo.MouseSleep = 100                                           // Make it smooth
-	robotgo.Move(originalX+int(m.distance), originalY)                 // Right edge
-	robotgo.Move(originalX+int(m.distance), originalY+int(m.distance)) // Down edge
-	robotgo.Move(originalX, originalY+int(m.distance))                 // Left edge
-	robotgo.Move(originalX, originalY)                                 // Up edge (back to start)
+	robotgo.MouseSleep = 100                             // Make it smooth
+	robotgo.Move(originalX+Distance, originalY)          // Right edge
+	robotgo.Move(originalX+Distance, originalY+Distance) // Down edge
+	robotgo.Move(originalX, originalY+Distance)          // Left edge
+	robotgo.Move(originalX, originalY)                   // Up edge (back to start)
 
 	return nil
-}
-
-func userIsAlreadyMoving(originalX, originalY int) (bool, error) {
-	time.Sleep(10 * time.Millisecond)
-
-	nowX, nowY := robotgo.Location()
-
-	// If cursor moved, user is actively using it
-	if nowX != originalX || nowY != originalY {
-		return true, nil
-	}
-
-	return false, nil
 }
