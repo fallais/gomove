@@ -12,7 +12,11 @@ type Config struct {
 	LogFile string `mapstructure:"logfile"`
 }
 
+// Behavior defines the behavior settings for the application.
 type Behavior struct {
+	// StartActivitiesOnStartup indicates whether the application should start activities on startup.
+	StartActivitiesOnStartup bool `mapstructure:"start_on_boot"`
+
 	// IdleTimeout is the duration of user inactivity after which the activities should be triggered.
 	IdleTimeout time.Duration `mapstructure:"idle_timeout"`
 
@@ -23,6 +27,7 @@ type Behavior struct {
 	PauseWhenUserIsActive bool `mapstructure:"pause_when_user_is_active"`
 }
 
+// Schedule defines the schedule settings for the application.
 type Schedule struct {
 	Enabled bool           `mapstructure:"enabled"`
 	From    string         `mapstructure:"from"`
@@ -30,6 +35,7 @@ type Schedule struct {
 	Days    []time.Weekday `mapstructure:"days"`
 }
 
+// Activity defines the activity settings for the application.
 type Activity struct {
 	Kind     Kind          `mapstructure:"kind" validate:"required"`
 	Enabled  bool          `mapstructure:"enabled"`

@@ -23,6 +23,7 @@ type ActivityManager struct {
 	mover   *mouse.Mover
 
 	isPaused bool
+	pausedAt time.Time
 
 	tickers map[string]*time.Ticker
 
@@ -51,6 +52,11 @@ func (am *ActivityManager) Start() {
 	// Start the watcher
 	am.watcher.Start()
 
+	// Start the resume goroutine if ResumeAfterInactivity is enabled
+	if am.behavior.ResumeAfterInactivity {
+		go am.resume()
+	}
+
 	// Create tickers for each activity
 	am.tickers = make(map[string]*time.Ticker)
 	for _, activity := range am.activities {
@@ -72,10 +78,25 @@ func (am *ActivityManager) Start() {
 	for {
 		select {
 		case e := <-events:
+			// Check if the activity manager is paused
+			am.mutex.RLock()
+			if am.isPaused {
+				log.Debug("activity manager is paused, skipping activity", zap.String("activity", e))
+				am.mutex.RUnlock()
+				continue
+			}
+			am.mutex.RUnlock()
+
+			// Handle the event kind
 			switch e {
 			case string(models.KindMouse):
 				if am.watcher.IsUserMoving() {
-					log.Info("user is moving the mouse, skipping activity", zap.String("activity", e))
+					log.Debug("user is moving the mouse, skipping activity", zap.String("activity", e))
+
+					if am.behavior.PauseWhenUserIsActive {
+						am.pause()
+					}
+
 					continue
 				}
 
@@ -104,5 +125,52 @@ func (am *ActivityManager) handleMouse() {
 		}
 	} else {
 		log.Info("mouse moved", zap.Time("at", time.Now()))
+	}
+}
+
+func (am *ActivityManager) pause() {
+	am.mutex.Lock()
+	defer am.mutex.Unlock()
+
+	if am.isPaused {
+		log.Debug("activity manager is already paused")
+		return
+	}
+
+	log.Debug("pausing activity manager")
+	am.isPaused = true
+	am.pausedAt = time.Now()
+}
+
+func (am *ActivityManager) resume() {
+	ticker := time.NewTicker(1 * time.Second) // Check every second
+	defer ticker.Stop()
+
+	for range ticker.C {
+		am.checkAndResumeIfNeeded()
+	}
+}
+
+func (am *ActivityManager) checkAndResumeIfNeeded() {
+	am.mutex.Lock()
+	defer am.mutex.Unlock()
+
+	if !am.isPaused {
+		return
+	}
+
+	// Check if we've been paused longer than the idle timeout
+	if time.Since(am.pausedAt) > am.behavior.IdleTimeout {
+		// Check if user is still active
+		if am.watcher.IsUserMoving() {
+			log.Debug("user is still active, not resuming")
+			// Reset the pause time to avoid constant checking
+			am.pausedAt = time.Now()
+			return
+		}
+
+		log.Debug("idle timeout reached, resuming activity manager")
+		am.isPaused = false
+		am.pausedAt = time.Time{} // Reset pause time
 	}
 }

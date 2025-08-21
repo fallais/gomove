@@ -1,7 +1,6 @@
 package start
 
 import (
-	"fmt"
 	"gomove/internal/models"
 	"gomove/pkg/activity"
 	"gomove/pkg/log"
@@ -15,7 +14,7 @@ import (
 )
 
 func Run(cmd *cobra.Command, args []string) {
-	log.Info("gomove is starting")
+	log.Info("gomove is starting", zap.Bool("debug", viper.GetBool("debug")), zap.String("config", viper.ConfigFileUsed()))
 	log.Info("press ctrl+c to stop...")
 
 	var config models.Config
@@ -23,7 +22,6 @@ func Run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal("unable to decode into struct", zap.Error(err))
 	}
-	fmt.Println(config)
 
 	// Validate the configuration
 	validate := validator.New(validator.WithRequiredStructEnabled())

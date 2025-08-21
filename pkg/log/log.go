@@ -6,9 +6,13 @@ import (
 
 var logger *zap.Logger
 
-func init() {
+func Init(debug bool) {
 	var err error
-	logger, err = zap.NewDevelopment()
+	if debug {
+		logger, err = zap.NewDevelopment()
+	} else {
+		logger, err = zap.NewProduction()
+	}
 	if err != nil {
 		panic(err)
 	}
