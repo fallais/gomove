@@ -25,20 +25,25 @@ type ActivityManager struct {
 	isPaused bool
 	pausedAt time.Time
 
-	tickers map[string]*time.Ticker
+	activityTickers map[string]*time.Ticker
+	pauseTicker     *time.Ticker
 
 	signal chan os.Signal
 
 	mutex sync.RWMutex
 }
 
-func NewActivityManager(behavior models.Behavior, activities []models.Activity, watcher *watcher.Watcher, mover *mouse.Mover) *ActivityManager {
+func NewActivityManager(behavior models.Behavior, activities []models.Activity, watcher *watcher.Watcher) *ActivityManager {
+	// Create the mouse mover
+	mover := mouse.NewMover()
+
 	return &ActivityManager{
-		behavior:   behavior,
-		activities: activities,
-		watcher:    watcher,
-		mover:      mover,
-		signal:     make(chan os.Signal, 1),
+		behavior:    behavior,
+		activities:  activities,
+		watcher:     watcher,
+		mover:       mover,
+		signal:      make(chan os.Signal, 1),
+		pauseTicker: time.NewTicker(500 * time.Millisecond),
 	}
 }
 
@@ -58,16 +63,16 @@ func (am *ActivityManager) Start() {
 	}
 
 	// Create tickers for each activity
-	am.tickers = make(map[string]*time.Ticker)
+	am.activityTickers = make(map[string]*time.Ticker)
 	for _, activity := range am.activities {
 		log.Debug("adding ticker", zap.String("activity", string(activity.Kind)))
-		am.tickers[string(activity.Kind)] = time.NewTicker(activity.Interval)
+		am.activityTickers[string(activity.Kind)] = time.NewTicker(activity.Interval)
 	}
 
 	events := make(chan string)
 
 	// Fan-in: forward each ticker into events channel
-	for kind, ticker := range am.tickers {
+	for kind, ticker := range am.activityTickers {
 		go func(n string, t *time.Ticker) {
 			for range t.C {
 				events <- n
@@ -105,6 +110,9 @@ func (am *ActivityManager) Start() {
 				// Handle keyboard input event
 			}
 
+		case <-am.pauseTicker.C:
+			am.checkAndPauseIfNeeded()
+
 		case <-signalChan:
 			log.Info("received interrupt signal")
 			log.Info("stopping mouse mover")
@@ -114,7 +122,16 @@ func (am *ActivityManager) Start() {
 }
 
 func (am *ActivityManager) handleMouse() {
-	err := am.mover.Move()
+	// Find the pattern
+	var pattern models.Pattern
+	for _, activity := range am.activities {
+		if activity.Kind == models.KindMouse {
+			pattern = activity.Pattern
+			break
+		}
+	}
+
+	err := am.mover.Move(pattern)
 	if err != nil {
 		if errors.Is(err, mouse.ErrUserInterruption) {
 			log.Info("user interrupted movement")
@@ -124,7 +141,7 @@ func (am *ActivityManager) handleMouse() {
 			log.Error("error moving mouse", zap.Error(err))
 		}
 	} else {
-		log.Info("mouse moved", zap.Time("at", time.Now()))
+		log.Info("mouse moved", zap.Time("at", time.Now()), zap.String("pattern", string(pattern)))
 	}
 }
 
@@ -148,6 +165,26 @@ func (am *ActivityManager) resume() {
 
 	for range ticker.C {
 		am.checkAndResumeIfNeeded()
+	}
+}
+
+func (am *ActivityManager) checkAndPauseIfNeeded() {
+	// Only pause if the behavior is enabled and we're not already paused
+	if !am.behavior.PauseWhenUserIsActive {
+		return
+	}
+
+	am.mutex.RLock()
+	if am.isPaused {
+		am.mutex.RUnlock()
+		return
+	}
+	am.mutex.RUnlock()
+
+	// Check if user is currently active
+	if am.watcher.IsUserMoving() {
+		log.Debug("user is active, pausing activity manager")
+		am.pause()
 	}
 }
 

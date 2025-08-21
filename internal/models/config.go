@@ -6,7 +6,7 @@ import "time"
 type Config struct {
 	Behavior Behavior `mapstructure:"behavior" validate:"required"`
 
-	Activities []Activity `mapstructure:"activities" validate:"required"`
+	Activities []Activity `mapstructure:"activities" validate:"required,dive,required"`
 
 	Debug   bool   `mapstructure:"debug"`
 	LogFile string `mapstructure:"logfile"`
@@ -38,7 +38,8 @@ type Schedule struct {
 // Activity defines the activity settings for the application.
 type Activity struct {
 	Kind     Kind          `mapstructure:"kind" validate:"required"`
-	Enabled  bool          `mapstructure:"enabled"`
+	Pattern  Pattern       `mapstructure:"pattern" validate:"required,oneof=square triangle up_and_down left_and_right"`
+	Enabled  bool          `mapstructure:"enabled" validate:"required"`
 	Schedule Schedule      `mapstructure:"schedule"`
 	Interval time.Duration `mapstructure:"interval" validate:"required,gte=5000000000"`
 }

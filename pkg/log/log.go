@@ -2,6 +2,7 @@ package log
 
 import (
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 var logger *zap.Logger
@@ -9,9 +10,15 @@ var logger *zap.Logger
 func Init(debug bool) {
 	var err error
 	if debug {
-		logger, err = zap.NewDevelopment()
+		cfg := zap.NewDevelopmentConfig()
+		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		cfg.DisableStacktrace = true
+		logger, err = cfg.Build()
 	} else {
-		logger, err = zap.NewProduction()
+		cfg := zap.NewProductionConfig()
+		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		cfg.DisableStacktrace = true
+		logger, err = cfg.Build()
 	}
 	if err != nil {
 		panic(err)

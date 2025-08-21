@@ -4,7 +4,6 @@ import (
 	"gomove/internal/models"
 	"gomove/pkg/activity"
 	"gomove/pkg/log"
-	"gomove/pkg/mouse"
 	"gomove/pkg/watcher"
 
 	"github.com/go-playground/validator/v10"
@@ -33,11 +32,8 @@ func Run(cmd *cobra.Command, args []string) {
 	// Create a new watcher
 	watcher := watcher.NewWatcher()
 
-	// Create the mouse mover
-	mover := mouse.NewMover()
-
 	// Create the activity manager
-	activityManager := activity.NewActivityManager(config.Behavior, config.Activities, watcher, mover)
+	activityManager := activity.NewActivityManager(config.Behavior, config.Activities, watcher)
 
 	// Start
 	activityManager.Start()

@@ -1,6 +1,11 @@
-# gomove
+# GoMove
 
-GoMove is a CLI application that prevents your computer session from locking by periodically moving the mouse cursor slightly. It's designed to work on both Windows and Linux systems (but now Windows only).
+GoMove is a CLI application that prevents your computer session from locking by :
+
+- periodically moving the mouse cursor slightly
+- periodically tapping on `cmd` key (Windows key for Windows)
+
+It's designed to work on both Windows and Linux systems.
 
 ## Why ?
 
