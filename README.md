@@ -33,3 +33,12 @@ activities:
 debug: true
 logfile: ""
 ```
+
+### Start
+
+Linux: Simply run `gomove start`
+
+Windows: Simply run `gomove.exe start`
+
+### Run as a service
+
