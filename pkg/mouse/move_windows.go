@@ -2,7 +2,6 @@ package mouse
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/go-vgo/robotgo"
@@ -27,15 +26,10 @@ const (
 )
 
 type Mover struct {
-	interval time.Duration
-	watcher  Watcher
 }
 
-func NewMover(watcher Watcher, interval time.Duration) *Mover {
-	return &Mover{
-		interval: interval,
-		watcher:  watcher,
-	}
+func NewMover() *Mover {
+	return &Mover{}
 }
 
 func (m *Mover) EstimatedDuration() time.Duration {
@@ -44,12 +38,6 @@ func (m *Mover) EstimatedDuration() time.Duration {
 
 // Move moves the mouse cursor in a square pattern by the specified distance on Windows
 func (m *Mover) Move() error {
-	fmt.Println(m.watcher.IsUserMoving())
-	// Check if user is already moving the cursor (compare position after small delay)
-	if m.watcher.IsUserMoving() {
-		return ErrUserAlreadyMoving
-	}
-
 	// Store original position for comparison
 	originalX, originalY := robotgo.Location()
 

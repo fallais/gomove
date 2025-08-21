@@ -4,23 +4,35 @@ import "time"
 
 // Config represents the configuration for the application
 type Config struct {
-	Interval int `yaml:"interval"`
-	Distance int `yaml:"distance"`
+	Behavior Behavior `mapstructure:"behavior" validate:"required"`
 
-	ResumeAfterInactivity      bool `yaml:"resume_after_inactivity"`
-	ResumeAfterInactivityValue int  `yaml:"resume_after_inactivity_value"`
+	Activities []Activity `mapstructure:"activities" validate:"required"`
 
-	PauseWhenUserIsActive bool `yaml:"pause_when_user_is_active"`
+	Debug   bool   `mapstructure:"debug"`
+	LogFile string `mapstructure:"logfile"`
+}
 
-	Schedule Schedule `yaml:"schedule"`
+type Behavior struct {
+	// IdleTimeout is the duration of user inactivity after which the activities should be triggered.
+	IdleTimeout time.Duration `mapstructure:"idle_timeout"`
 
-	Debug   bool   `yaml:"debug"`
-	LogFile string `yaml:"logfile"`
+	// ResumeAfterInactivity indicates whether to resume activities after a period of inactivity.
+	ResumeAfterInactivity bool `mapstructure:"resume_after_inactivity"`
+
+	// PauseWhenUserIsActive indicates whether to pause activities when the user is active.
+	PauseWhenUserIsActive bool `mapstructure:"pause_when_user_is_active"`
 }
 
 type Schedule struct {
-	Enabled bool           `yaml:"enabled"`
-	From    string         `yaml:"from"`
-	To      string         `yaml:"to"`
-	Days    []time.Weekday `yaml:"days"`
+	Enabled bool           `mapstructure:"enabled"`
+	From    string         `mapstructure:"from"`
+	To      string         `mapstructure:"to"`
+	Days    []time.Weekday `mapstructure:"days"`
+}
+
+type Activity struct {
+	Kind     Kind          `mapstructure:"kind" validate:"required"`
+	Enabled  bool          `mapstructure:"enabled"`
+	Schedule Schedule      `mapstructure:"schedule"`
+	Interval time.Duration `mapstructure:"interval" validate:"required,gte=5000000000"`
 }

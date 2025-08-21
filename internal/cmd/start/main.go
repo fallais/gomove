@@ -1,74 +1,46 @@
 package start
 
 import (
-	"errors"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
+	"fmt"
+	"gomove/internal/models"
+	"gomove/pkg/activity"
 	"gomove/pkg/log"
 	"gomove/pkg/mouse"
+	"gomove/pkg/watcher"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
 func Run(cmd *cobra.Command, args []string) {
-	// Get configuration values
-	interval := viper.GetInt("interval")
-	distance := viper.GetInt("distance")
+	log.Info("gomove is starting")
+	log.Info("press ctrl+c to stop...")
 
-	if interval <= 0 {
-		interval = 60 // default to 60 seconds
+	var config models.Config
+	err := viper.Unmarshal(&config)
+	if err != nil {
+		log.Fatal("unable to decode into struct", zap.Error(err))
 	}
-	if distance <= 0 {
-		distance = 1 // default to 1 pixel
-	}
+	fmt.Println(config)
 
-	log.Info("Starting mouse mover", zap.Int("interval", interval), zap.Int("distance", distance))
-	log.Info("Press Ctrl+C to stop...")
-
-	// Create a channel to listen for interrupt signals
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-
-	// Create a ticker for periodic mouse movement
-	ticker := time.NewTicker(time.Duration(interval) * time.Second)
-	defer ticker.Stop()
-
-	watcher := mouse.NewWatcher()
-	watcher.Start()
-	defer watcher.Stop()
-
-	mover := mouse.NewMover(watcher, time.Duration(interval)*time.Second)
-
-	// Check if the estimated duration exceeds the interval
-	if mover.EstimatedDuration() > time.Duration(interval)*time.Second {
-		log.Warn("estimated move duration exceeds interval, increase the interval", zap.Int("interval", interval))
-		return
+	// Validate the configuration
+	validate := validator.New(validator.WithRequiredStructEnabled())
+	err = validate.Struct(config)
+	if err != nil {
+		log.Fatal("config is not valid", zap.Error(err))
 	}
 
-	// Main loop
-	for {
-		select {
-		case <-ticker.C:
-			err := mover.Move()
-			if err != nil {
-				if errors.Is(err, mouse.ErrUserInterruption) {
-					log.Info("user interrupted movement")
-				} else if errors.Is(err, mouse.ErrUserAlreadyMoving) {
-					log.Info("user is already moving the cursor")
-				} else {
-					log.Error("Error moving mouse", zap.Error(err))
-				}
-			} else {
-				log.Info("mouse moved", zap.Time("at", time.Now()))
-			}
-		case <-signalChan:
-			log.Info("Received interrupt signal. Stopping mouse mover...")
-			return
-		}
-	}
+	// Create a new watcher
+	watcher := watcher.NewWatcher()
+
+	// Create the mouse mover
+	mover := mouse.NewMover()
+
+	// Create the activity manager
+	activityManager := activity.NewActivityManager(config.Behavior, config.Activities, watcher, mover)
+
+	// Start
+	activityManager.Start()
 }

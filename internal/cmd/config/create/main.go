@@ -1,18 +1,19 @@
 package create
 
 import (
-	"fmt"
+	"gomove/pkg/log"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 func Run(cmd *cobra.Command, args []string) {
 	// Get home directory
 	home, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Printf("Error getting home directory: %v\n", err)
+		log.Error("Error getting home directory", zap.Error(err))
 		return
 	}
 
@@ -20,7 +21,7 @@ func Run(cmd *cobra.Command, args []string) {
 	configDir := filepath.Join(home, ".gomove")
 	err = os.MkdirAll(configDir, 0755)
 	if err != nil {
-		fmt.Printf("Error creating config directory: %v\n", err)
+		log.Error("Error creating config directory", zap.Error(err))
 		return
 	}
 
@@ -29,7 +30,7 @@ func Run(cmd *cobra.Command, args []string) {
 
 	// Check if config file already exists
 	if _, err := os.Stat(configFile); err == nil {
-		fmt.Printf("Config file already exists at: %s\n", configFile)
+		log.Info("Config file already exists", zap.String("path", configFile))
 		return
 	}
 
@@ -53,10 +54,10 @@ logfile: ""
 	// Write config file
 	err = os.WriteFile(configFile, []byte(defaultConfig), 0644)
 	if err != nil {
-		fmt.Printf("Error creating config file: %v\n", err)
+		log.Error("Error creating config file", zap.Error(err))
 		return
 	}
 
-	fmt.Printf("Configuration file created successfully at: %s\n", configFile)
-	fmt.Println("You can now edit this file to customize your settings.")
+	log.Info("Configuration file created successfully", zap.String("path", configFile))
+	log.Info("You can now edit this file to customize your settings.")
 }
