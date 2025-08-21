@@ -8,3 +8,23 @@ You may not want your session being lock because :
 
 - You have a long command running on terminal
 - You want it
+
+## Usage
+
+### Configuration file
+
+You can run `go move config create`, it will create a default configuration file for you in `~/.gomove/config.yaml`.
+
+Or you can create it yourself :
+
+```yaml
+behavior:
+  idle_timeout: 10s
+  resume_after_inactivity: true
+  pause_when_user_is_active: true
+activities:
+  - kind: mouse
+    interval: 3s
+debug: true
+logfile: ""
+```
