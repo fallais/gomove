@@ -15,12 +15,11 @@ jobs:
       with:
         go-version: 1.24
 
-    # Install GCC
     - name: Install GCC
       run: sudo apt update && sudo apt install -y gcc libc6-dev xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev libxkbcommon-x11-dev libxkbcommon-dev
 
     - name: Test
-      run: go test -v ./...
+      run: go mod download && go test -v ./...
 
   build:
     runs-on: ubuntu-latest
@@ -32,5 +31,8 @@ jobs:
       with:
         go-version: 1.24
 
+    - name: Install GCC
+      run: sudo apt update && sudo apt install -y gcc libc6-dev xcb libxcb-xkb-dev x11-xkb-utils libx11-xcb-dev libxkbcommon-x11-dev libxkbcommon-dev
+
     - name: Build
-      run: go build -v ./...
+      run: go mod download && go build -v ./...
