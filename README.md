@@ -13,7 +13,7 @@
 - **Cross-Platform**: Native support for Windows and Linux
 - **Logging**: Comprehensive logging with configurable output
 
-## Use Cases
+## Use-cases
 
 GoMove is perfect when you need to prevent session locks during:
 
