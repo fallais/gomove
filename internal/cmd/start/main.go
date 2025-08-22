@@ -1,12 +1,12 @@
 package start
 
 import (
+	"fmt"
 	"gomove/internal/models"
 	"gomove/pkg/activity"
 	"gomove/pkg/log"
 	"gomove/pkg/watcher"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -22,9 +22,10 @@ func Run(cmd *cobra.Command, args []string) {
 		log.Fatal("unable to decode into struct", zap.Error(err))
 	}
 
+	fmt.Println(config)
+
 	// Validate the configuration
-	validate := validator.New(validator.WithRequiredStructEnabled())
-	err = validate.Struct(config)
+	err = config.Validate()
 	if err != nil {
 		log.Fatal("config is not valid", zap.Error(err))
 	}

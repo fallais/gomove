@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-vgo/robotgo"
 	"go.uber.org/zap"
 )
 
@@ -65,6 +66,11 @@ func (am *ActivityManager) Start() {
 	// Create tickers for each activity
 	am.activityTickers = make(map[string]*time.Ticker)
 	for _, activity := range am.activities {
+		if activity.Enabled != nil && !*activity.Enabled {
+			log.Debug("activity is not enabled", zap.String("activity", string(activity.Kind)))
+			continue
+		}
+
 		log.Debug("adding ticker", zap.String("activity", string(activity.Kind)))
 		am.activityTickers[string(activity.Kind)] = time.NewTicker(activity.Interval)
 	}
@@ -92,22 +98,23 @@ func (am *ActivityManager) Start() {
 			}
 			am.mutex.RUnlock()
 
+			// Check if user is active
+			if am.watcher.IsUserMoving() {
+				log.Debug("user is moving the mouse, skipping activity", zap.String("activity", e))
+
+				if am.behavior.PauseWhenUserIsActive {
+					am.pause()
+				}
+
+				continue
+			}
+
 			// Handle the event kind
 			switch e {
 			case string(models.KindMouse):
-				if am.watcher.IsUserMoving() {
-					log.Debug("user is moving the mouse, skipping activity", zap.String("activity", e))
-
-					if am.behavior.PauseWhenUserIsActive {
-						am.pause()
-					}
-
-					continue
-				}
-
 				am.handleMouse()
 			case string(models.KindKeyboard):
-				// Handle keyboard input event
+				am.handleKeyboard()
 			}
 
 		case <-am.pauseTicker.C:
@@ -143,6 +150,12 @@ func (am *ActivityManager) handleMouse() {
 	} else {
 		log.Info("mouse moved", zap.Time("at", time.Now()), zap.String("pattern", string(pattern)))
 	}
+}
+
+func (am *ActivityManager) handleKeyboard() {
+	robotgo.KeyTap("cmd")
+	time.Sleep(500 * time.Millisecond)
+	robotgo.KeyTap("v", "cmd")
 }
 
 func (am *ActivityManager) pause() {

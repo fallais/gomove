@@ -4,8 +4,11 @@ behavior:
   pause_when_user_is_active: true
 activities:
   - kind: mouse
-    enabled: true
+    enabled: false
     interval: 5s
     pattern: square
+  - kind: keyboard
+    enabled: true
+    interval: 5s
 debug: true
 logfile: ""
